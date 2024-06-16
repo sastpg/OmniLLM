@@ -39,7 +39,7 @@ def create_app(models)->FastAPI:
 
     def create_route(model_name):
         @app.post(f"/{model_name}", response_model=LLMResponse)
-        def llama(request: LLMRequest):
+        def chat(request: LLMRequest):
             response = models[model_name](messages=request.messages, temperature=request.temperature, top_p=request.top_p, do_sample=request.do_sample, max_new_tokens=request.max_new_tokens)
             return {"status": 0, "data": response}
         
