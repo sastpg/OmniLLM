@@ -1,7 +1,7 @@
 {
     "CUDA_VISIBLE_DEVICES": "0",
     "models":{
-        "glm-4-9b-chat": "../models/glm-4-9b-chat"
+        "llama-3-8b-instruct": "../models/Meta-Llama-3-8B-Instruct"
     },
     "port": 8001
 }

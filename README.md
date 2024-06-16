@@ -1,2 +1,2 @@
-# LLMService
+# OmniLLM
 

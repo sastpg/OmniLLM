@@ -22,7 +22,7 @@ class AbstractModel:
         )
     
     @abstractmethod
-    def __call__(self, messages: List[Dict[str, str]], temperature: float=0.6, top_p: float=0.9, do_sample: bool=True, max_new_tokens: int=512) -> str:
+    def __call__(self, messages: List[Dict[str, str]], temperature: float, top_p: float, do_sample: bool, max_new_tokens: int) -> str:
         raise NotImplementedError
 
 
