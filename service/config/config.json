@@ -1,5 +1,5 @@
 {
-    "CUDA_VISIBLE_DEVICES": "0",
+    "CUDA_VISIBLE_DEVICES": "0, 1, 2",
     "models":{
         "llama-3-8b-instruct": "../models/Meta-Llama-3-8B-Instruct"
     },

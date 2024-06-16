@@ -20,7 +20,7 @@ class LLMRequest(BaseModel):
             {"role": "user", "content": "你好，你是谁？"}
         ]
     )
-    temperature: Optional[float] = Field(description="温度系数", default=0.6)
+    temperature: Optional[float] = Field(description="温度系数", default=0.7)
     top_p: Optional[float] = Field(description="Top-p采样值", default=0.9)
     do_sample: Optional[bool] = Field(description="是否进行采样", default=True)
     max_new_tokens: Optional[int] = Field(description="生成tokens的最大数量", default=512)

@@ -23,7 +23,7 @@ class GLM(AbstractModel):
 
         with torch.no_grad():
             outputs = self.model.generate(
-                inputs,
+                **inputs,
                 max_new_tokens=max_new_tokens,
                 do_sample=do_sample,
                 temperature=temperature,
