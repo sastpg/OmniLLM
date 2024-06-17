@@ -1,9 +1,6 @@
 import requests
 
-def call_llm(model_name, system_prompt, messages, **kwargs):
-    if messages[0]['role'] != "system":
-        messages = [{"role": "system", "content": system_prompt}] + messages
-
+def call_llm(model_name, messages, **kwargs):
     url = f"http://localhost:8001/{model_name}"
     message = {
         "messages": messages,
