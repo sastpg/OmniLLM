@@ -11,10 +11,12 @@ from utils.logger import logger
 from model.common import AbstractModel
 from model.llama import Llama3
 from model.glm import GLM
+from model.qwen import Qwen
 
 _NAME2MODEL = {
     "llama": Llama3,
-    "glm": GLM
+    "glm": GLM,
+    "qwen": Qwen
 }
 
 def get_model_cls(name) -> Type[AbstractModel]:
