@@ -1,10 +1,13 @@
-import requests
+from utils import list_llm_models, call_llm, get_default_idx
 import streamlit as st
 
+st.set_page_config(layout="wide", page_title='OmniLLM')
 st.title("OmniLLM Demo")
 
 
 with st.sidebar:
+    models = list_llm_models()
+    model = st.selectbox('选择模型类型', models, index=get_default_idx(models, "glm-4-9b-chat"))
     top_p = st.slider("top_p", 0.0, 1.0, 0.8, step=0.01)
     top_k = st.slider("top_k", 1, 20, 10, step=1, key="top_k")
     temperature = st.slider("temperature", 0.0, 1.5, 0.95, step=0.01)
@@ -14,16 +17,6 @@ with st.sidebar:
     export_btn = cols[0]
     clear_history = cols[1].button("Clear", use_container_width=True)
     retry = export_btn.button("Retry", use_container_width=True)
-
-
-def call_llm(messages, **kwargs):
-    url = "http://localhost:8001/llama-3-8b-instruct"
-    message = {
-        "messages": messages,
-        **kwargs
-    }
-    resp = requests.post(url, json=message)
-    return resp.json()
 
 
 if "messages" not in st.session_state:
