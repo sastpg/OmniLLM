@@ -1,11 +1,15 @@
 import requests
 
-def call_llm(messages, **kwargs):
-    url = "http://localhost:8001/llama-3-8b-instruct"
+def call_llm(model_name, system_prompt, messages, **kwargs):
+    if messages[0]['role'] != "system":
+        messages = [{"role": "system", "content": system_prompt}] + messages
+
+    url = f"http://localhost:8001/{model_name}"
     message = {
         "messages": messages,
         **kwargs
     }
+    print(model_name, messages)
     resp = requests.post(url, json=message)
     return resp.json()
 
