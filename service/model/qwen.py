@@ -7,7 +7,7 @@ class Qwen(AbstractModel):
     def __init__(self, model_path: Path, device_map: Dict | str = '') -> None:
         super().__init__(model_path, device_map)
 
-    def __call__(self, messages: List[Dict[str, str]], temperature: float=0.6, top_p: float=0.9, do_sample: bool=True, max_new_tokens: int=512) -> str:
+    def __call__(self, messages: List[Dict[str, str]], tools=[], stream=False, **kwargs) -> str:
         text = self.tokenizer.apply_chat_template(
             messages,
             tokenize=False,
@@ -19,10 +19,7 @@ class Qwen(AbstractModel):
         # Use `max_new_tokens` to control the maximum output length.
         generated_ids = self.model.generate(
             model_inputs.input_ids,
-            max_new_tokens=512,
-            temperature=temperature,
-            top_p=top_p,
-            do_sample=do_sample
+            **kwargs
         )
         generated_ids = [
             output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)

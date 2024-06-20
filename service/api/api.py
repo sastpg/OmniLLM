@@ -12,6 +12,13 @@ class LLMResponse(BaseModel):
 #     role: Annotated[str, StringConstraints(strict=True, pattern=r"^(system|user|assistant)$")]
 #     content: str
 
+class LLMConfig(BaseModel):
+    do_sample: Optional[bool] = Field(description="是否进行采样", default=True)
+    top_p: Optional[float] = Field(description="Top-p采样值", default=0.9)
+    top_k: Optional[int] = Field(description="Top-k采样值", default=50)
+    temperature: Optional[float] = Field(description="温度系数", default=0.7)
+    max_new_tokens: Optional[int] = Field(description="生成tokens的最大数量", default=512)
+
 class LLMRequest(BaseModel):
     messages: List[Dict[str, str]] = Field(
         description="消息列表",
@@ -20,10 +27,10 @@ class LLMRequest(BaseModel):
             {"role": "user", "content": "你好，你是谁？"}
         ]
     )
-    temperature: Optional[float] = Field(description="温度系数", default=0.7)
-    top_p: Optional[float] = Field(description="Top-p采样值", default=0.9)
-    do_sample: Optional[bool] = Field(description="是否进行采样", default=True)
-    max_new_tokens: Optional[int] = Field(description="生成tokens的最大数量", default=512)
+    tools: Optional[List[str]] = Field(description="工具列表", default=[])
+    stream: Optional[bool] = Field(description="流式输出", default=False)
+    llm_config: Optional[LLMConfig] = Field(description="模型参数配置", default=LLMConfig())
+    
 
 
 def create_app(models)->FastAPI:
@@ -40,7 +47,7 @@ def create_app(models)->FastAPI:
     def create_route(model_name):
         @app.post(f"/{model_name}", response_model=LLMResponse)
         def chat(request: LLMRequest):
-            response = models[model_name](messages=request.messages, temperature=request.temperature, top_p=request.top_p, do_sample=request.do_sample, max_new_tokens=request.max_new_tokens)
+            response = models[model_name](messages=request.messages, tools=request.tools, stream=request.stream, **request.llm_config.model_dump())
             return {"status": 0, "data": response}
         
     for name in models.keys():

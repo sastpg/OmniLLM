@@ -4,9 +4,9 @@ def call_llm(model_name, messages, **kwargs):
     url = f"http://localhost:8001/{model_name}"
     message = {
         "messages": messages,
-        **kwargs
+        "llm_config": kwargs
     }
-    print(model_name, messages)
+    print(model_name, message)
     resp = requests.post(url, json=message)
     return resp.json()
 

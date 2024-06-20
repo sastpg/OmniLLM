@@ -17,9 +17,9 @@ with st.sidebar:
     stream = cols[0].checkbox(label="流式输出", value=False)
     do_remember = cols[1].checkbox(label="多轮对话", value=False)
     with st.expander("模型配置", expanded=False):
-        top_p = st.slider("top_p", 0.0, 1.0, 0.8, step=0.01)
-        top_k = st.slider("top_k", 1, 20, 10, step=1, key="top_k")
-        temperature = st.slider("temperature", 0.0, 1.5, 0.95, step=0.01)
+        top_p = st.slider("top_p", 0.0, 1.0, 0.9, step=0.01)
+        top_k = st.slider("top_k", 1, 50, 50, step=1, key="top_k")
+        temperature = st.slider("temperature", 0.0, 1.0, 0.7, step=0.01)
         # repetition_penalty = st.slider("repetition_penalty", 0.0, 2.0, 1.0, step=0.01)
         max_new_tokens = st.slider("max_new_tokens", 1, 4096, 512, step=1)
 
