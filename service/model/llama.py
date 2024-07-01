@@ -1,14 +1,17 @@
 from pathlib import Path
 
 from typing import Union, List,Dict
-from model.common import AbstractModel
+from model.common import AbstractModel, process_input
 
 
 class Llama3(AbstractModel):
     def __init__(self, model_path: Path, device_map: Union[dict,str]='') -> None:
         super().__init__(model_path, device_map)
     
-    def __call__(self, messages: List[Dict[str, str]], tools=[], stream=False, **kwargs) -> str:
+    def __call__(self, messages: List[Dict[str, str]], tools: list=None, stream=False, **kwargs) -> str:
+        if tools:
+            messages = process_input(messages, tools)
+        
         input_ids = self.tokenizer.apply_chat_template(
             messages,
             add_generation_prompt=True,

@@ -1,13 +1,16 @@
 from pathlib import Path
 
 from typing import Union, List,Dict
-from model.common import AbstractModel
+from model.common import AbstractModel, process_input
 
 class Qwen(AbstractModel):
     def __init__(self, model_path: Path, device_map: Dict | str = '') -> None:
         super().__init__(model_path, device_map)
 
     def __call__(self, messages: List[Dict[str, str]], tools=[], stream=False, **kwargs) -> str:
+        if tools:
+            messages = process_input(messages, tools)
+        
         text = self.tokenizer.apply_chat_template(
             messages,
             tokenize=False,
