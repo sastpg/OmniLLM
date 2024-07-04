@@ -1,4 +1,4 @@
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 
 import torch
 from pathlib import Path
@@ -7,9 +7,8 @@ from transformers import (
     AutoTokenizer,
 )
 
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers.generation.stopping_criteria import StoppingCriteria, STOPPING_CRITERIA_INPUTS_DOCSTRING, add_start_docstrings
 from typing import Union, List, Dict
-
 
 _TOOL_PROMPT = """You have access to the following set of tools. Here are the names and descriptions for each tool:
 
@@ -21,8 +20,16 @@ Note The `arguments` should be a dictionary, with keys corresponding to the argu
 
 Qustion: {query}"""
 
+class StopAtTokens(StoppingCriteria):
+    def __init__(self, token_id_list: list[int] = None):
+        self.token_id_list = token_id_list
+        
+    @add_start_docstrings(STOPPING_CRITERIA_INPUTS_DOCSTRING)
+    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
+        return input_ids[0][-1].detach().cpu().numpy() in self.token_id_list
 
-class AbstractModel:
+
+class AbstractModel(ABC):
     def __init__(self, model_path: Path, device_map: Union[dict,str]='') -> None:
         self.tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
         self.model = AutoModelForCausalLM.from_pretrained(

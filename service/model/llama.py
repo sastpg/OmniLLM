@@ -1,8 +1,8 @@
 from pathlib import Path
 
 from typing import Union, List,Dict
-from model.common import AbstractModel, process_input
-
+from model.common import AbstractModel, StopAtTokens
+from transformers.generation.stopping_criteria import StoppingCriteriaList
 
 class Llama3(AbstractModel):
     def __init__(self, model_path: Path, device_map: Union[dict,str]='') -> None:
@@ -10,7 +10,9 @@ class Llama3(AbstractModel):
     
     def __call__(self, messages: List[Dict[str, str]], tools: list=None, stream=False, **kwargs) -> str:
         if tools:
-            messages = process_input(messages, tools)
+            stopping_criteria = StoppingCriteriaList()
+            stopping_criteria.append(StopAtTokens(token_id_list=self.tokenizer.encode('OBSERVATION')[1:]))
+            kwargs['stopping_criteria'] = stopping_criteria
         
         input_ids = self.tokenizer.apply_chat_template(
             messages,
