@@ -1,15 +1,17 @@
 from pathlib import Path
 
 from typing import Union, List,Dict
-from model.common import AbstractModel, StopAtTokens
+from model.common import AbstractModel, StopAtTokens, preprocess_message, postprocess_message
 from transformers.generation.stopping_criteria import StoppingCriteriaList
+from utils.logger import logger
 
 class Llama3(AbstractModel):
     def __init__(self, model_path: Path, device_map: Union[dict,str]='') -> None:
         super().__init__(model_path, device_map)
     
-    def __call__(self, messages: List[Dict[str, str]], tools: list=None, stream=False, **kwargs) -> str:
+    def __call__(self, messages: List[Dict], tools: List[Dict]=None, stream=False, **kwargs) -> str:
         if tools:
+            messages = preprocess_message(messages, tools)
             stopping_criteria = StoppingCriteriaList()
             stopping_criteria.append(StopAtTokens(token_id_list=self.tokenizer.encode('OBSERVATION')[1:]))
             kwargs['stopping_criteria'] = stopping_criteria
@@ -31,8 +33,10 @@ class Llama3(AbstractModel):
             **kwargs
         )
         if len(outputs) > 0:
-            response = outputs[0][input_ids.shape[-1]:]
-            return self.tokenizer.decode(response, skip_special_tokens=True)
+            generated_ids = outputs[0][input_ids.shape[-1]:]
+            response = self.tokenizer.decode(generated_ids, skip_special_tokens=True)
+            logger.info(response)
+            return postprocess_message(response)
         else:
             return None
 

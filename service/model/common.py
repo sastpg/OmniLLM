@@ -1,24 +1,12 @@
-from abc import ABC, abstractmethod
-
+import json
+import copy
 import torch
 from pathlib import Path
-from transformers import (
-    AutoModelForCausalLM,
-    AutoTokenizer,
-)
-
-from transformers.generation.stopping_criteria import StoppingCriteria, STOPPING_CRITERIA_INPUTS_DOCSTRING, add_start_docstrings
+from abc import ABC, abstractmethod
 from typing import Union, List, Dict
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers.generation.stopping_criteria import StoppingCriteria, STOPPING_CRITERIA_INPUTS_DOCSTRING, add_start_docstrings
 
-_TOOL_PROMPT = """You have access to the following set of tools. Here are the names and descriptions for each tool:
-
-{tools}
-
-Given the following question, return the name and input of the tool to use(a JSON blob with 'name' and 'arguments' keys). If it doesn't require any of the provided tools to answer, just return an empty JSON blob {{}}.
-
-Note The `arguments` should be a dictionary, with keys corresponding to the argument names and the values corresponding to the requested values.
-
-Qustion: {query}"""
 
 class StopAtTokens(StoppingCriteria):
     def __init__(self, token_id_list: list[int] = None):
@@ -40,11 +28,72 @@ class AbstractModel(ABC):
         )
     
     @abstractmethod
-    def __call__(self, messages: List[Dict[str, str]], tools: list=None, stream=False, **kwargs) -> str:
+    def __call__(self, messages: List[Dict], tools: List[Dict]=None, stream=False, **kwargs) -> str:
         raise NotImplementedError
 
 
-def process_input(history: list[dict], tools: list) -> list[dict]:
-    chat_messages = history[:-1]
-    chat_messages.append(dict(role="user", content=_TOOL_PROMPT.format(tools="\n".join(tools), query=history[-1]["content"])))
+__PREFIX = "You are a helpful assistant."
+
+__TOOL_INSTRUCTION = """You have access to the following tools:
+
+{tools}
+
+When you need to call a tool, please insert the following command in your reply, which can be called zero or multiple times according to your needs:
+
+ACTION: The tool to take, should be one of [{tool_names}]
+ARGS: The input to the tool, should be a JSON blob with keys that match the tool's parameters names
+OBSERVATION: Tool results
+RETURN: Reply based on tool results."""
+
+
+def preprocess_message(messages: List[Dict], tools: List[Dict]) -> List[Dict]:
+    _messages = copy.deepcopy(messages)
+    if _messages[0]["role"] != "system":
+        _messages = [dict(role="system", content="")] + _messages
+    chat_messages = []
+    for msg in _messages:
+        role, content = msg["role"], msg["content"]
+        if role == "system":
+            tool_names = ', '.join(tool.get('name') for tool in tools)
+            tool_descs = '\n'.join(tool.get('description') for tool in tools)
+            if not content:
+                content = __PREFIX
+            content += '\n\n' + __TOOL_INSTRUCTION.format(tools=tool_descs, tool_names=tool_names)
+            chat_messages.append(dict(role=role, content=content))
+        elif role == "user":
+            chat_messages.append(msg)
+        elif role == "assistant":
+            # content = (content or [])
+            tool_call = msg.get("tool_calls", None)
+            if tool_call:
+                tool_name, tool_args = tool_call["name"], tool_call["arguments"]
+                content += f"\nACTION: {tool_name}\nARGS: {tool_args}"
+            if chat_messages[-1]["role"] == "assistant":
+                    chat_messages[-1]["content"] += content
+            else:
+                chat_messages.append(dict(role=role, content=content))
+        elif role == "tool":
+            chat_messages[-1]["content"] += f"\nOBSERVATION: {content}\nRETURN: "
+        else:
+            raise TypeError(f"Unexpected role: {role}")
+
     return chat_messages
+
+
+def postprocess_message(messages: str):
+    i = messages.find("ACTION:")
+    # no tool call
+    if i < 0:
+        return {"role": "assistant", "content": messages, "tool_calls": None}
+    messages = messages.rstrip('\nOBSERVATION')
+    # content before tool call
+    content = messages[:i].lstrip('\n').rstrip().rstrip('\n') if i > 0 else ''
+    # tool call
+    tool_info = messages[i:]
+    tool_name, tool_args=tool_info.split("ACTION:")[1].split("ARGS:")
+    tool_name = tool_name.strip('\n').strip()
+    tool_args = tool_args.strip('\n').strip()
+    # print(tool_name, tool_args)
+    tool_calls = {"name": tool_name, "arguments": json.loads(tool_args)}
+    
+    return {"role": "assistant", "content": content, "tool_calls": tool_calls}

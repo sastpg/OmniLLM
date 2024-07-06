@@ -1,15 +1,20 @@
 from pathlib import Path
 
 from typing import Union, List,Dict
-from model.common import AbstractModel, process_input
+from model.common import AbstractModel, StopAtTokens, preprocess_message, postprocess_message
+from transformers.generation.stopping_criteria import StoppingCriteriaList
+from utils.logger import logger
 
 class Qwen(AbstractModel):
     def __init__(self, model_path: Path, device_map: Dict | str = '') -> None:
         super().__init__(model_path, device_map)
 
-    def __call__(self, messages: List[Dict[str, str]], tools=[], stream=False, **kwargs) -> str:
+    def __call__(self, messages: List[Dict], tools: List[Dict]=None, stream=False, **kwargs) -> str:
         if tools:
-            messages = process_input(messages, tools)
+            messages = preprocess_message(messages, tools)
+            stopping_criteria = StoppingCriteriaList()
+            stopping_criteria.append(StopAtTokens(token_id_list=self.tokenizer.encode('OBSERVATION')))
+            kwargs['stopping_criteria'] = stopping_criteria
         
         text = self.tokenizer.apply_chat_template(
             messages,
@@ -29,4 +34,5 @@ class Qwen(AbstractModel):
         ]
 
         response = self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
-        return response
+        logger.info(response)
+        return postprocess_message(response)

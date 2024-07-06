@@ -6,7 +6,7 @@ from typing_extensions import Annotated
 
 class LLMResponse(BaseModel):
     status: int
-    data: Optional[str]
+    data: Optional[dict]
 
 # class Message(BaseModel):
 #     role: Annotated[str, StringConstraints(strict=True, pattern=r"^(system|user|assistant)$")]
@@ -27,7 +27,7 @@ class LLMRequest(BaseModel):
             {"role": "user", "content": "你好，你是谁？"}
         ]
     )
-    tools: Optional[List[str]] = Field(description="工具列表", default=[])
+    tools: Optional[List[Dict]] = Field(description="工具列表", default=None)
     stream: Optional[bool] = Field(description="流式输出", default=False)
     llm_config: Optional[LLMConfig] = Field(description="模型参数配置", default=LLMConfig())
     
