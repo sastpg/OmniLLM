@@ -20,7 +20,7 @@ class LLMConfig(BaseModel):
     max_new_tokens: Optional[int] = Field(description="生成tokens的最大数量", default=512)
 
 class LLMRequest(BaseModel):
-    messages: List[Dict[str, str]] = Field(
+    messages: List[Dict] = Field(
         description="消息列表",
         default=[
             {"role": "system", "content": "你是一个乐于解答各种问题的助手，你的任务是为用户提供专业、准确、有见地的建议。"},

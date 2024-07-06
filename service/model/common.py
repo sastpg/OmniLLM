@@ -94,6 +94,6 @@ def postprocess_message(messages: str):
     tool_name = tool_name.strip('\n').strip()
     tool_args = tool_args.strip('\n').strip()
     # print(tool_name, tool_args)
-    tool_calls = {"name": tool_name, "arguments": json.loads(tool_args)}
+    tool_calls = {"name": tool_name, "arguments": tool_args}
     
     return {"role": "assistant", "content": content, "tool_calls": tool_calls}
