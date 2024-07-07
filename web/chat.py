@@ -1,9 +1,17 @@
-from api import list_llm_models, call_llm, get_default_idx
+import json
 import streamlit as st
+from tools import TOOL_DESCRIPTIONS, despatch_tool
+from api import list_llm_models, call_llm, get_default_idx
 
 st.set_page_config(layout="wide", page_title='OmniLLM')
 st.title("OmniLLM") # 开源大模型应用平台
 st.write("""OmniLLM 是一个开源大模型应用平台，支持多种开源大模型的在线应用如对话、微调、对齐等。代码仓库：[OmniLLM](https://github.com/sastpg/OmniLLM)""")
+
+# cols = st.columns(4)
+# cols[0].container(height=120).write(':balloon:')
+# cols[1].container(height=120).write(':balloon:')
+# cols[2].container(height=120).write(':balloon:')
+# cols[3].container(height=120).write(':balloon:')
 
 SYSTEM_PROMPT = "你是一个乐于解答各种问题的助手，你的任务是为用户提供专业、准确、有见地的建议。"
 
@@ -16,6 +24,13 @@ with st.sidebar:
     clear_history = cols[1].button("Clear", use_container_width=True, help="清空对话历史")
     stream = cols[0].checkbox(label="流式输出", value=False)
     do_remember = cols[1].checkbox(label="多轮对话", value=False)
+    use_tool = cols[0].checkbox(label="使用工具", value=True)
+    if use_tool:
+        tool_list = st.multiselect(
+            "可选工具",
+            ["web_search", "get_weather", "draw", "code_executor", "ppt_maker"],
+            ["web_search", "draw"]
+        )
     with st.expander("模型配置", expanded=False):
         top_p = st.slider("top_p", 0.0, 1.0, 0.9, step=0.01)
         top_k = st.slider("top_k", 1, 50, 50, step=1, key="top_k")
@@ -31,15 +46,36 @@ if apply or clear_history:
     st.session_state.messages = [dict(role="system", content=system_prompt)] if system_prompt!="" else []
 
 for msg in st.session_state.messages:
-    if msg["role"] != "system":
+    if msg["role"] == "system":
+        pass
+    elif msg["role"] == "tool":
+        st.chat_message(msg["role"]).expander("Observation", expanded=False).write(msg["content"])
+    else:
         st.chat_message(msg["role"]).write(msg["content"])
 
 
-if prompt := st.chat_input():
+if prompt := st.chat_input("Chat with OmniLLM!"):
     st.chat_message("user").write(prompt)
     st.session_state.messages.append({"role": "user", "content": prompt})
+    print(st.session_state.messages)
+    # tool encapsulation
+    tools = []
+    if use_tool:
+        for tool in tool_list:
+            tools.append(dict(name=tool, description=TOOL_DESCRIPTIONS[tool]))
     
-    resp = call_llm(model_name, st.session_state["messages"], top_p=top_p, temperature=temperature, do_sample=True, max_new_tokens=max_new_tokens)
-    response = resp["data"].strip()
-    st.session_state.messages.append({"role": "assistant", "content": response})
-    st.chat_message("assistant").write(response)
+    for _ in range(6):
+        resp = call_llm(model_name, st.session_state["messages"], tools=tools, top_p=top_p, temperature=temperature, do_sample=True, max_new_tokens=max_new_tokens)
+        resp = resp["data"]
+        content, tool_calls = resp["content"], resp["tool_calls"]
+        st.session_state.messages.append(resp)
+        if content:
+            st.chat_message("assistant").write(content)
+        if tool_calls:
+            with st.spinner(f"Calling tool {tool_calls['name']}..."):
+                observation = despatch_tool(tool_calls['name'], json.loads(tool_calls['arguments']))
+            # with st.expander("Observation", expanded=False):
+            st.chat_message("tool").expander("Observation", expanded=False).write(observation)
+            st.session_state.messages.append({"role": "tool", "content": observation})
+        else:
+            break
