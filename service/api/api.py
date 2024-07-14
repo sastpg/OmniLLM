@@ -45,10 +45,11 @@ def create_app(models)->FastAPI:
         return {"data": list(models.keys())}
 
     def create_route(model_name):
-        @app.post(f"/{model_name}", response_model=LLMResponse)
+        @app.post(f"/{model_name}")
         def chat(request: LLMRequest):
             response = models[model_name](messages=request.messages, tools=request.tools, stream=request.stream, **request.llm_config.model_dump())
-            return {"status": 0, "data": response}
+            # return {"status": 0, "data": response}
+            return response
         
     for name in models.keys():
         create_route(name)

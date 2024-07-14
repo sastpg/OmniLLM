@@ -65,17 +65,30 @@ if prompt := st.chat_input("Chat with OmniLLM!"):
             tools.append(dict(name=tool, description=TOOL_DESCRIPTIONS[tool]))
     
     for _ in range(6):
-        resp = call_llm(model_name, st.session_state["messages"], tools=tools, top_p=top_p, temperature=temperature, do_sample=True, max_new_tokens=max_new_tokens)
-        resp = resp["data"]
-        content, tool_calls = resp["content"], resp["tool_calls"]
-        st.session_state.messages.append(resp)
-        if content:
-            st.chat_message("assistant").write(content)
-        if tool_calls:
-            with st.spinner(f"Calling tool {tool_calls['name']}..."):
-                observation = despatch_tool(tool_calls['name'], json.loads(tool_calls['arguments']))
-            # with st.expander("Observation", expanded=False):
-            st.chat_message("tool").expander("Observation", expanded=False).write(observation)
-            st.session_state.messages.append({"role": "tool", "content": observation})
+        with st.chat_message("assistant"):
+            message_placeholder = st.empty()
+            tool_placeholder = st.empty()
+        for resp in call_llm(
+            model_name,
+            st.session_state["messages"],
+            tools=tools, stream=stream,
+            top_p=top_p,
+            temperature=temperature,
+            do_sample=True,
+            max_new_tokens=max_new_tokens
+        ):
+            content = resp["content"]
+            if content:
+                message_placeholder.markdown(content + "●")
         else:
-            break
+            if content:
+                message_placeholder.markdown(content)
+            st.session_state.messages.append(resp)
+            tool_calls = resp["tool_calls"]
+            if tool_calls:
+                with st.spinner(f"Calling tool {tool_calls['name']}..."):
+                    observation = despatch_tool(tool_calls['name'], json.loads(tool_calls['arguments']))
+                tool_placeholder.expander("Observation", expanded=False).write(observation)
+                st.session_state.messages.append({"role": "tool", "content": observation})
+            else:
+                break

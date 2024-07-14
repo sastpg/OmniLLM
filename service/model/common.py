@@ -2,9 +2,11 @@ import json
 import copy
 import torch
 from pathlib import Path
+from threading import Thread
+from utils.logger import logger
 from abc import ABC, abstractmethod
-from typing import Union, List, Dict
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from typing import Union, List, Dict, Iterable
+from transformers import AutoModelForCausalLM, AutoTokenizer, TextIteratorStreamer
 from transformers.generation.stopping_criteria import StoppingCriteria, STOPPING_CRITERIA_INPUTS_DOCSTRING, add_start_docstrings
 
 
@@ -26,10 +28,26 @@ class AbstractModel(ABC):
             device_map = device_map,
             trust_remote_code=True
         )
+        self.streamer = TextIteratorStreamer(self.tokenizer, skip_prompt=True, skip_special_tokens=True)
     
     @abstractmethod
-    def __call__(self, messages: List[Dict], tools: List[Dict]=None, stream=False, **kwargs) -> str:
+    def __call__(self, messages: List[Dict], tools: List[Dict]=None, stream: bool=False, **kwargs):
         raise NotImplementedError
+
+    def gen_stream(self, gen_config: Dict) -> Iterable[str]:
+        # logger.info(gen_config)
+        thread = Thread(target=self.model.generate, kwargs=gen_config)
+        thread.start()
+
+        generated_text = ""
+        FN_TOKENS = ("\nACTION:", "\nARGS:", "\nOBSERVATION:", "\nRETURN:")
+        for new_text in self.streamer:
+            generated_text += new_text
+            if not any(new_text in s for s in FN_TOKENS):
+                response = postprocess_message(generated_text)
+                yield json.dumps(response, ensure_ascii=False)
+    
+        logger.info(generated_text)
 
 
 __PREFIX = "You are a helpful assistant."
@@ -80,7 +98,7 @@ def preprocess_message(messages: List[Dict], tools: List[Dict]) -> List[Dict]:
     return chat_messages
 
 
-def postprocess_message(messages: str):
+def postprocess_message(messages: str) -> Dict:
     i = messages.find("ACTION:")
     # no tool call
     if i < 0:
@@ -90,7 +108,11 @@ def postprocess_message(messages: str):
     content = messages[:i].lstrip('\n').rstrip().rstrip('\n') if i > 0 else ''
     # tool call
     tool_info = messages[i:]
-    tool_name, tool_args=tool_info.split("ACTION:")[1].split("ARGS:")
+    i = tool_info.find("ARGS:")
+    if i < 0:
+        tool_name, tool_args=tool_info.split("ACTION:")[1], ""
+    else:
+        tool_name, tool_args=tool_info.split("ACTION:")[1].split("ARGS:")
     tool_name = tool_name.strip('\n').strip()
     tool_args = tool_args.strip('\n').strip()
     # print(tool_name, tool_args)
