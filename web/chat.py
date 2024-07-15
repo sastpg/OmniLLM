@@ -88,7 +88,9 @@ if prompt := st.chat_input("Chat with OmniLLM!"):
             if tool_calls:
                 with st.spinner(f"Calling tool {tool_calls['name']}..."):
                     observation = despatch_tool(tool_calls['name'], json.loads(tool_calls['arguments']))
-                tool_placeholder.expander("Observation", expanded=False).write(observation)
-                st.session_state.messages.append({"role": "tool", "content": observation})
+                tool_placeholder.expander("Observation", expanded=False).write(observation.text)
+                if observation.content_type == "image":
+                    st.chat_message("assistant").image(observation.image_url)
+                st.session_state.messages.append({"role": "tool", "content": observation.text})
             else:
                 break
